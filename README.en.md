@@ -29,6 +29,7 @@ Each patch can be toggled individually (see the comments and flags at the top of
 
 ## Applicability
 
+- **Supported platforms**: macOS / Linux (requires Bash); **on Windows run inside Git Bash or WSL** (a pure bash script, not for the native prompt).
 - Targets a DeepSeek Harness (DSH) local deployment; needs access to your provider / model config.
 - **Idempotent**: re-running will not double-apply patches.
 

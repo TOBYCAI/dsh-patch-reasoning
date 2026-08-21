@@ -30,6 +30,7 @@ bash ~/.dsh/bin/dsh-patch-reasoning.sh
 
 ## 适用性
 
+- **适配系统**：macOS / Linux（需 Bash）；**Windows 请在 Git Bash / WSL 中运行**（纯 bash 脚本，不适用于原生命令提示符）。
 - 适用于 DeepSeek Harness（DSH）本地部署，需要能访问你使用的 provider/模型配置。
 - 脚本是**幂等**的：重复运行不会重复打补丁。
 
