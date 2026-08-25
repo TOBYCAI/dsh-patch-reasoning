@@ -18,9 +18,26 @@ One-command re-application of the DeepSeek Harness "model-tuning" patches (**run
 
 > For a custom / third-party (OpenAI-compatible) model that wants multi-level reasoning: the `pi-ai` adapter supports 7 levels natively and needs no patch — just declare `reasoningEfforts` in the model config.
 
+## Get it
+
+```bash
+# Option 1: git clone (recommended — counts toward clone stats)
+git clone https://github.com/TOBYCAI/dsh-patch-reasoning.git
+cd dsh-patch-reasoning
+
+# Option 2: download the source zip from Releases
+#   https://github.com/TOBYCAI/dsh-patch-reasoning/releases
+```
+
+The script is a single file `dsh-patch-reasoning.sh` with no external dependencies.
+
 ## Usage
 
 ```bash
+# Run the script directly from the cloned repo (see "Get it" above)
+bash dsh-patch-reasoning.sh
+
+# Or run it from DSH's bin directory after placing it there
 bash ~/.dsh/bin/dsh-patch-reasoning.sh
 ```
 

@@ -18,10 +18,26 @@
 
 > 自定义/第三方模型（OpenAI 兼容）若想用多档推理强度：`pi-ai` 适配器原生支持 7 档、无需补丁，在模型配置里声明 `reasoningEfforts` 即可。
 
+## 获取
+
+```bash
+# 方式一：git clone（推荐 —— 计入项目克隆统计）
+git clone https://github.com/TOBYCAI/dsh-patch-reasoning.git
+cd dsh-patch-reasoning
+
+# 方式二：从 Releases 下载源码包
+#   https://github.com/TOBYCAI/dsh-patch-reasoning/releases
+```
+
+脚本为单文件 `dsh-patch-reasoning.sh`，无需安装依赖。
+
 ## 用法
 
 ```bash
-# 直接运行（默认打 DSH 相关文件补丁）
+# 直接运行仓库里的脚本（先按「获取」clone / 下载）
+bash dsh-patch-reasoning.sh
+
+# 或放到 DSH 的 bin 目录后运行
 bash ~/.dsh/bin/dsh-patch-reasoning.sh
 ```
 
