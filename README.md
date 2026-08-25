@@ -21,7 +21,7 @@
 ## 获取
 
 ```bash
-# 方式一：git clone（推荐 —— 计入项目克隆统计）
+# 方式一：git clone（推荐）
 git clone https://github.com/TOBYCAI/dsh-patch-reasoning.git
 cd dsh-patch-reasoning
 

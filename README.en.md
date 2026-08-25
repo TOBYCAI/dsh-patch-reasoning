@@ -21,7 +21,7 @@ One-command re-application of the DeepSeek Harness "model-tuning" patches (**run
 ## Get it
 
 ```bash
-# Option 1: git clone (recommended — counts toward clone stats)
+# Option 1: git clone (recommended)
 git clone https://github.com/TOBYCAI/dsh-patch-reasoning.git
 cd dsh-patch-reasoning
 
