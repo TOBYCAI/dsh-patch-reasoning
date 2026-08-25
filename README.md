@@ -7,7 +7,7 @@
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
 ![Script](https://img.shields.io/badge/type-script-4d6bfe?style=flat-square)
 
-一键重新应用 DeepSeek Harness 的「模型调优」补丁（**DSH 升级后运行一次即可**）。每个补丁独立幂等：目标文件已带标记则跳过，未带则应用。
+一键重新应用 DeepSeek Harness 适配器的「推理强度（reasoning effort）」补丁（**DSH 升级后运行一次即可**）。补丁幂等：目标文件已带标记或已满足预期则跳过，未满足则应用。
 
 ## 补丁内容
 
@@ -15,8 +15,6 @@
    effort 仅 `low` / `high` / `max` 三档（`medium`、`xhigh` 会被后端并到 `high`；`off` 关闭思考）。v2 不再伪造
    7 档——新版 dsh 适配器已原生支持 `off/low/high/max` 则跳过；旧版只有 `off/high/max` 则补齐 `low`。
    各主流模型 reasoning 等级对照见 [REASONING_LEVELS.md](./REASONING_LEVELS.md)。
-2. **workflow 子 agent 默认模型** → 使用 `deepseek-v4-flash`（脚本内显式指定 `model` 仍优先）。
-3. **ralph worker 默认模型** → `deepseek-v4-flash`（`RALPH_SCRIPT` 为部署固定，只能打补丁）。
 
 > 自定义/第三方模型（OpenAI 兼容）若想用多档推理强度：`pi-ai` 适配器原生支持 7 档、无需补丁，在模型配置里声明 `reasoningEfforts` 即可。
 
@@ -43,7 +41,7 @@ bash dsh-patch-reasoning.sh
 bash ~/.dsh/bin/dsh-patch-reasoning.sh
 ```
 
-各补丁可单独开关（见脚本开头的说明与参数）。
+运行脚本即应用上述 reasoning 补丁，幂等可重复运行。
 
 ## 适用性
 

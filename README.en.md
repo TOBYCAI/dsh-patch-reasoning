@@ -7,13 +7,11 @@
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
 ![Script](https://img.shields.io/badge/type-script-4d6bfe?style=flat-square)
 
-One-command re-application of the DeepSeek Harness "model-tuning" patches (**run once after a DSH upgrade**). Each patch is idempotent: it skips the target file if already tagged, and applies it otherwise.
+One-command re-application of the DeepSeek Harness adapter's "reasoning effort" patch (**run once after a DSH upgrade**). The patch is idempotent: it skips the target file if already tagged or already meets the expectation, and applies it otherwise.
 
 ## Patches
 
 1. **DeepSeek reasoning: align with the real official levels (`off` / `low` / `high` / `max`)**. Per the official docs, DeepSeek only has three effective efforts — `low` / `high` / `max` (`medium` and `xhigh` are folded into `high`; `off` disables thinking). v2 no longer fakes 7 levels: on a new dsh adapter that already supports `off/low/high/max` it skips; on an old adapter with only `off/high/max` it adds `low`. See [REASONING_LEVELS.md](./REASONING_LEVELS.md) for the per-model reasoning-level reference.
-2. **Workflow sub-agents default model** → `deepseek-v4-flash` (an explicit `model` in your script still wins).
-3. **Ralph worker default model** → `deepseek-v4-flash` (`RALPH_SCRIPT` is deployment-fixed, so it is patched).
 
 > For a custom / third-party (OpenAI-compatible) model that wants multi-level reasoning: the `pi-ai` adapter supports 7 levels natively and needs no patch — just declare `reasoningEfforts` in the model config.
 
@@ -40,7 +38,7 @@ bash dsh-patch-reasoning.sh
 bash ~/.dsh/bin/dsh-patch-reasoning.sh
 ```
 
-Each patch can be toggled individually (see the comments and flags at the top of the script).
+Running the script applies the reasoning patch above; it is idempotent and safe to re-run.
 
 ## Applicability
 
