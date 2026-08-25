@@ -7,16 +7,20 @@
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
 ![Script](https://img.shields.io/badge/type-script-4d6bfe?style=flat-square)
 
-一键重新应用 DeepSeek Harness 适配器的「推理强度（reasoning effort）」补丁（**DSH 升级后运行一次即可**）。补丁幂等：目标文件已带标记或已满足预期则跳过，未满足则应用。
+一键重新应用 DeepSeek Harness 的「推理强度（reasoning effort）」补丁——**自动探测 dsh 安装目录下所有适配器，按 provider 对齐各主流模型的真实档位（DSH 升级后运行一次即可）**。补丁幂等：目标已满足预期则跳过，未满足则应用。
 
-## 补丁内容
+## 工作原理（自动探测 + 按 provider 对齐）
 
-1. **DeepSeek 推理强度：对齐官方真实档位（off / low / high / max）**。经核对官方文档，DeepSeek 有效
-   effort 仅 `low` / `high` / `max` 三档（`medium`、`xhigh` 会被后端并到 `high`；`off` 关闭思考）。v2 不再伪造
-   7 档——新版 dsh 适配器已原生支持 `off/low/high/max` 则跳过；旧版只有 `off/high/max` 则补齐 `low`。
-   各主流模型 reasoning 等级对照见 [REASONING_LEVELS.md](./REASONING_LEVELS.md)。
+脚本启动时自动探测 dsh 安装目录下所有 `dsh-llm-*` 适配器，按 provider 类型分派「真实档位对齐」：
 
-> 自定义/第三方模型（OpenAI 兼容）若想用多档推理强度：`pi-ai` 适配器原生支持 7 档、无需补丁，在模型配置里声明 `reasoningEfforts` 即可。
+- **deepseek**：适配器代码写死档位。对齐官方真实 `off / low / high / max`
+  （有效 effort 仅 `low`/`high`/`max` 三档，`medium`/`xhigh` 后端并到 `high`，`off` 关闭思考）。
+  新版 dsh 已原生支持则跳过；旧版只有 `off/high/max` 则补齐 `low`。
+- **pi-ai**：配置驱动网关，原生支持 7 档全集（`off/minimal/low/medium/high/xhigh/max`，见其 `THINKING_LEVELS`）。
+  各模型可选档位由模型配置的 `reasoningEfforts` 声明决定，**无需改代码，跳过**。
+- **retry 等包装层 / 未知 provider**：跳过并提示。
+
+> 说明：DSH 的主流模型（OpenAI / Claude / Gemini / Qwen 等）经 pi-ai 网关，档位已为官方全集；唯一确定需代码层对齐的是 `dsh-llm-deepseek`。脚本泛化为「探测所有适配器」，便于未来安装独立 provider 适配器时也能自动对齐。各主流模型 reasoning 等级完整对照见 [REASONING_LEVELS.md](./REASONING_LEVELS.md)。
 
 ## 获取
 

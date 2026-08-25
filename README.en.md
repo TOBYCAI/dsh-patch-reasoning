@@ -7,13 +7,20 @@
 ![License](https://img.shields.io/badge/license-MIT-3b82f6?style=flat-square)
 ![Script](https://img.shields.io/badge/type-script-4d6bfe?style=flat-square)
 
-One-command re-application of the DeepSeek Harness adapter's "reasoning effort" patch (**run once after a DSH upgrade**). The patch is idempotent: it skips the target file if already tagged or already meets the expectation, and applies it otherwise.
+One-command re-application of the DeepSeek Harness "reasoning effort" patch — **auto-detects every adapter under your dsh install and aligns each provider's real reasoning levels (run once after a DSH upgrade)**. The patch is idempotent: it skips a target that already meets the expectation, and applies it otherwise.
 
-## Patches
+## How it works (auto-detect + per-provider alignment)
 
-1. **DeepSeek reasoning: align with the real official levels (`off` / `low` / `high` / `max`)**. Per the official docs, DeepSeek only has three effective efforts — `low` / `high` / `max` (`medium` and `xhigh` are folded into `high`; `off` disables thinking). v2 no longer fakes 7 levels: on a new dsh adapter that already supports `off/low/high/max` it skips; on an old adapter with only `off/high/max` it adds `low`. See [REASONING_LEVELS.md](./REASONING_LEVELS.md) for the per-model reasoning-level reference.
+On startup the script auto-detects every `dsh-llm-*` adapter under your dsh install and dispatches a "real-level alignment" patch by provider type:
 
-> For a custom / third-party (OpenAI-compatible) model that wants multi-level reasoning: the `pi-ai` adapter supports 7 levels natively and needs no patch — just declare `reasoningEfforts` in the model config.
+- **deepseek**: the adapter hard-codes its levels. Aligns to the official real `off / low / high / max`
+  (only `low`/`high`/`max` are effective — `medium` and `xhigh` are folded into `high`; `off` disables thinking).
+  Skips if a new dsh adapter already supports `off/low/high/max`; adds `low` on an old adapter with only `off/high/max`.
+- **pi-ai**: a config-driven gateway that natively supports the full 7 levels (`off/minimal/low/medium/high/xhigh/max`, see its `THINKING_LEVELS`).
+  Each model's selectable levels are decided by the model config's `reasoningEfforts` declaration, so **no code patch is needed — skipped**.
+- **retry wrapper / unknown provider**: skipped with a note.
+
+> Note: DSH's mainstream models (OpenAI / Claude / Gemini / Qwen, etc.) go through the pi-ai gateway and already expose the official full level set; the only provider that definitively needs code-level alignment is `dsh-llm-deepseek`. The script is generalized to "detect all adapters" so future standalone provider adapters also get aligned automatically. The full per-model reasoning-level reference is in [REASONING_LEVELS.md](./REASONING_LEVELS.md).
 
 ## Get it
 
