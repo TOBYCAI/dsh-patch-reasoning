@@ -1,31 +1,25 @@
 #!/usr/bin/env bash
 # dsh-patch-reasoning.sh — 重新应用 DSH「模型调优」补丁（dsh 更新后运行一次即可）。
 #
-# 1) DeepSeek 推理强度拓宽：off/high/max  ->  off/minimal/low/medium/high/xhigh/max
-#    （API 实测接受全部值，档位限制只是适配器代码写死的。）
-# 2) workflow 子 agent 默认用 deepseek-v4-flash（脚本显式指定 model 仍优先）。
-# 3) ralph worker 默认用 deepseek-v4-flash（RALPH_SCRIPT 为部署固定，只能打补丁）。
+# 推理强度（reasoning effort）档位说明（v2 重点）：
+#   不同主流模型的 reasoning 档位并不通用。经核对各官方文档（详见 REASONING_LEVELS.md）：
+#   - DeepSeek：真实仅 3 档有效 effort —— low / high / max
+#     （medium、xhigh 会被后端并到 high；off / none 用于关闭思考）。
+#   - OpenAI：reasoning.effort 支持 none/minimal/low/medium/high/xhigh，但分模型。
+#   - Anthropic Claude：thinking + budget_tokens（或新版 adaptive + effort low/medium/high/max）。
+#   - Google Gemini：thinkingLevel（MINIMAL/LOW/MEDIUM/HIGH）或 thinkingBudget（token）。
+#   - Qwen：enable_thinking + thinking_budget（token）或 reasoning_effort（分模型）。
 #
-# 每个补丁独立幂等：目标文件已带标记则跳过，未带则应用。
+# 本脚本 v2 的变化：
+#   1) 不再伪造 7 档。仅确保 DeepSeek 适配器暴露其真实档位 off / low / high / max
+#      （新版 dsh 已原生支持；旧版只有 off/high/max，这里补齐 low）。
+#   2) workflow 子 agent 默认用 deepseek-v4-flash（脚本显式指定 model 仍优先）。
+#   3) ralph worker 默认用 deepseek-v4-flash（RALPH_SCRIPT 为部署固定，只能打补丁）。
+#   4) 允许新会话不带工作区直接开始（Ungrouped）。
+#   5) 工作区选择器加「无项目开始」选项。
+#
+# 每个补丁独立幂等：目标文件已带标记或已满足预期则跳过，未满足则应用。
 # 用法：bash ~/.dsh/bin/dsh-patch-reasoning.sh
-#
-# 自定义/第三方模型（OpenAI 兼容）推理强度说明：pi-ai 适配器原生支持 7 档，无需补丁，
-# 在模型配置里声明 reasoningEfforts 即可，例如：
-#   providers:
-#     acme-gateway:
-#       apiKeyEnv: ACME_API_KEY
-#       baseURL: https://gateway.example/v1
-#       api: openai-completions
-#       models:
-#         - id: acme-large
-#           reasoningEfforts:
-#             off:
-#             minimal: minimal
-#             low: low
-#             medium: medium
-#             high: high
-#             xhigh: xhigh
-#             max: max
 # ============================================================================
 set -euo pipefail
 
@@ -40,28 +34,36 @@ fi
 echo "dsh 安装目录: $BASE"
 
 # ---------------------------------------------------------------------------
-# 1) DeepSeek 推理强度拓宽
+# 1) DeepSeek 推理强度：确保暴露真实档位（off / low / high / max）
+#    DeepSeek 官方 API 仅有 3 档有效 effort：low / high / max
+#     （medium、xhigh 会被后端并到 high；off 关闭思考）。
+#    新版 dsh-llm-deepseek 已原生支持 off/low/high/max；旧版只有 off/high/max。
+#    本补丁：若已含 low 则跳过；若缺 low 则补齐；若残留 v1 的 7 档伪造补丁则提示先升级 dsh。
 # ---------------------------------------------------------------------------
 FILE="$BASE/dsh-llm-deepseek/lib/index.js"
 if [ ! -f "$FILE" ]; then
   echo "✗ 未找到 dsh-llm-deepseek: $FILE" >&2
 elif grep -q "DSH_REASONING_WIDEN_PATCH" "$FILE"; then
-  echo "✓ 跳过(已应用): ${FILE##*/} 推理强度拓宽"
+  echo "⚠ 检测到 v1 的 7 档伪造补丁（DSH_REASONING_WIDEN_PATCH）。请先升级 dsh（会重置适配器），再重跑本脚本。跳过推理强度补丁。"
+elif grep -q 'effort === "off" || effort === "low" || effort === "high" || effort === "max"' "$FILE"; then
+  echo "✓ 跳过(上游已原生支持 off/low/high/max，与 DS 官方 low/high/max 一致): ${FILE##*/}"
 else
-  echo "→ 应用 推理强度拓宽 ..."
+  echo "→ 应用 推理强度真实档位（旧版适配器补齐 low）..."
   "$PY" - "$FILE" <<'PY'
 import sys
 p = sys.argv[1]
 s = open(p, encoding="utf-8").read()
 n = 0
 old1 = '\tif (effort === "off" || effort === "high" || effort === "max") return effort;'
-new1 = '\t// DSH_REASONING_WIDEN_PATCH: widened effort set\n\tif (effort === "off" || effort === "minimal" || effort === "low" || effort === "medium" || effort === "high" || effort === "xhigh" || effort === "max") return effort;'
-assert s.count(old1) == 1, "r1"
-s = s.replace(old1, new1); n += 1
+new1 = '\t// DSH_REASONING_V2_PATCH: 补齐真实档位 low（DS 官方 API 仅 low/high/max 三档有效）\n\tif (effort === "off" || effort === "low" || effort === "high" || effort === "max") return effort;'
+assert s.count(old1) in (0, 1), "r1"
+if s.count(old1) == 1:
+    s = s.replace(old1, new1); n += 1
 old2 = '\tif (effort === "high" || effort === "max") return {'
-new2 = '\tif (effort !== void 0) return {'
-assert s.count(old2) == 1, "r2"
-s = s.replace(old2, new2); n += 1
+new2 = '\tif (effort === "low" || effort === "high" || effort === "max") return {'
+assert s.count(old2) in (0, 1), "r2"
+if s.count(old2) == 1:
+    s = s.replace(old2, new2); n += 1
 old3 = '''const REASONING_EFFORTS = [
 \t{
 \t\tid: OFF_REASONING_EFFORT,
@@ -82,32 +84,21 @@ new3 = '''const REASONING_EFFORTS = [
 \t\tname: "Off"
 \t},
 \t{
-\t\tid: ReasoningEffortId("minimal"),
-\t\tname: "Minimal"
-\t},
-\t{
-\t\tid: ReasoningEffortId("low"),
+\t\tid: LOW_REASONING_EFFORT,
 \t\tname: "Low"
-\t},
-\t{
-\t\tid: ReasoningEffortId("medium"),
-\t\tname: "Medium"
 \t},
 \t{
 \t\tid: HIGH_REASONING_EFFORT,
 \t\tname: "High"
 \t},
 \t{
-\t\tid: ReasoningEffortId("xhigh"),
-\t\tname: "XHigh"
-\t},
-\t{
 \t\tid: MAX_REASONING_EFFORT,
 \t\tname: "Max"
 \t}
 ];'''
-assert s.count(old3) == 1, "r3"
-s = s.replace(old3, new3); n += 1
+assert s.count(old3) in (0, 1), "r3"
+if s.count(old3) == 1:
+    s = s.replace(old3, new3); n += 1
 old4 = '''\treasoningEffort: z.union([
 \t\t"off",
 \t\t"high",
@@ -115,23 +106,22 @@ old4 = '''\treasoningEffort: z.union([
 \t]),'''
 new4 = '''\treasoningEffort: z.union([
 \t\t"off",
-\t\t"minimal",
 \t\t"low",
-\t\t"medium",
 \t\t"high",
-\t\t"xhigh",
 \t\t"max"
 \t]),'''
-assert s.count(old4) == 1, "r4"
-s = s.replace(old4, new4); n += 1
+assert s.count(old4) in (0, 1), "r4"
+if s.count(old4) == 1:
+    s = s.replace(old4, new4); n += 1
 old5 = '\t\t\t\tdefaultEffort: connection.defaults.reasoningEffort === "off" ? OFF_REASONING_EFFORT : connection.defaults.reasoningEffort === "max" ? MAX_REASONING_EFFORT : HIGH_REASONING_EFFORT'
-new5 = '\t\t\t\tdefaultEffort: ({ off: OFF_REASONING_EFFORT, minimal: ReasoningEffortId("minimal"), low: ReasoningEffortId("low"), medium: ReasoningEffortId("medium"), high: HIGH_REASONING_EFFORT, xhigh: ReasoningEffortId("xhigh"), max: MAX_REASONING_EFFORT })[connection.defaults.reasoningEffort] ?? HIGH_REASONING_EFFORT'
-assert s.count(old5) == 1, "r5"
-s = s.replace(old5, new5); n += 1
+new5 = '\t\t\t\tdefaultEffort: connection.defaults.reasoningEffort === "off" ? OFF_REASONING_EFFORT : connection.defaults.reasoningEffort === "low" ? LOW_REASONING_EFFORT : connection.defaults.reasoningEffort === "max" ? MAX_REASONING_EFFORT : HIGH_REASONING_EFFORT'
+assert s.count(old5) in (0, 1), "r5"
+if s.count(old5) == 1:
+    s = s.replace(old5, new5); n += 1
 open(p, "w", encoding="utf-8").write(s)
-print("applied %d/5 replacements" % n)
+print("applied %d/5 replacements (old adapter -> 真实档位 off/low/high/max)" % n)
 PY
-  node --check "$FILE" && echo "✓ 推理强度拓宽 OK"
+  node --check "$FILE" && echo "✓ 推理强度真实档位 OK"
 fi
 
 # ---------------------------------------------------------------------------

@@ -11,8 +11,10 @@
 
 ## 补丁内容
 
-1. **DeepSeek 推理强度拓宽**：`off/high/max` → `off/minimal/low/medium/high/xhigh/max`
-   （API 实测接受全部值，档位限制只是适配器代码写死。）
+1. **DeepSeek 推理强度：对齐官方真实档位（off / low / high / max）**。经核对官方文档，DeepSeek 有效
+   effort 仅 `low` / `high` / `max` 三档（`medium`、`xhigh` 会被后端并到 `high`；`off` 关闭思考）。v2 不再伪造
+   7 档——新版 dsh 适配器已原生支持 `off/low/high/max` 则跳过；旧版只有 `off/high/max` 则补齐 `low`。
+   各主流模型 reasoning 等级对照见 [REASONING_LEVELS.md](./REASONING_LEVELS.md)。
 2. **workflow 子 agent 默认模型** → 使用 `deepseek-v4-flash`（脚本内显式指定 `model` 仍优先）。
 3. **ralph worker 默认模型** → `deepseek-v4-flash`（`RALPH_SCRIPT` 为部署固定，只能打补丁）。
 

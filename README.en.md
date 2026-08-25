@@ -11,8 +11,7 @@ One-command re-application of the DeepSeek Harness "model-tuning" patches (**run
 
 ## Patches
 
-1. **Widen DeepSeek reasoning levels**: `off/high/max` → `off/minimal/low/medium/high/xhigh/max`
-   (the API accepts all values; the limit is only hard-coded in the adapter).
+1. **DeepSeek reasoning: align with the real official levels (`off` / `low` / `high` / `max`)**. Per the official docs, DeepSeek only has three effective efforts — `low` / `high` / `max` (`medium` and `xhigh` are folded into `high`; `off` disables thinking). v2 no longer fakes 7 levels: on a new dsh adapter that already supports `off/low/high/max` it skips; on an old adapter with only `off/high/max` it adds `low`. See [REASONING_LEVELS.md](./REASONING_LEVELS.md) for the per-model reasoning-level reference.
 2. **Workflow sub-agents default model** → `deepseek-v4-flash` (an explicit `model` in your script still wins).
 3. **Ralph worker default model** → `deepseek-v4-flash` (`RALPH_SCRIPT` is deployment-fixed, so it is patched).
 
